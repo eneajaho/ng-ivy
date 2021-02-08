@@ -10,8 +10,8 @@ export abstract class State<T> {
 
     readonly destroy = new Subject<boolean>();
 
-    protected constructor(initialState?: T) {
-        this._state = initialState ?? undefined;
+    protected constructor(initialState: T = undefined) {
+        this._state = initialState;
         this.changes = new BehaviorSubject(this._state);
         this.changes$ = this.changes.asObservable().pipe(
             takeUntil(this.destroy),

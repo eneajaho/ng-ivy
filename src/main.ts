@@ -1,39 +1,41 @@
+import { CommonModule } from "@angular/common";
 import {
-    ChangeDetectionStrategy,
-    Component,
-    enableProdMode,
-    EventEmitter,
-    HostListener,
-    NgModule,
-    OnInit,
-    Output,
+    ChangeDetectionStrategy, Component,
+    enableProdMode, EventEmitter,
+    Inject,
+
+    InjectionToken,
+
+    Injector, NgModule, OnInit, Output,
+    SkipSelf,
     ɵrenderComponent as renderComponent
 } from '@angular/core';
-import { CommonModule } from "@angular/common";
 import { State } from "./State";
 
 enableProdMode();
 
+const myInjectionToken = new InjectionToken('injection-token');
+
 @Component({
     selector: 'btn',
     template: `
-        <button>
+        <button (click)="clicked.emit()">
+            {{ token }}
             <ng-content></ng-content>
         </button>
-    `
+    `,
+    providers: [
+        {
+            provide: myInjectionToken,
+            useValue: 'btn-cmp'
+        }
+    ]
 })
 export class ButtonCmp {
-    @Output() clicked = new EventEmitter<boolean>();
+    @Output() clicked = new EventEmitter();
 
-    @HostListener('click')
-    onClick() {
-        this.clicked.emit(true)
-    }
-}
+    constructor(@SkipSelf() @Inject(myInjectionToken) public token: string) { }
 
-export interface GameState {
-    count: number;
-    win: number;
 }
 
 @Component({
@@ -50,29 +52,45 @@ export interface GameState {
         <btn (clicked)="setState({ count: state.count - 1 })">Decrease</btn>
         <btn (clicked)="setState({ count: 0 })">Zero</btn>
     `,
-    changeDetection: ChangeDetectionStrategy.OnPush
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    providers: [
+        // {
+        //     provide: myInjectionToken,
+        //     useValue: 'app-cmp'
+        // }
+    ]
 })
-export class AppCmp extends State<GameState> implements OnInit {
+export class AppCmp extends State<{ count, win }> implements OnInit {
 
-    constructor() {
+    constructor(@Inject(myInjectionToken) public token: string) {
         super({ count: 0, win: 0 });
     }
 
     ngOnInit(): void {
-        // this will cause infinite loop
         this.changes$.subscribe(x => {
-            if (x.count > 10) {
+            if (x.count > 3) {
+                console.log('here');
+                // this will cause infinite loop and the app will crash
                 this.setState({ win: this.state.win + 1 });
             }
         })
     }
 }
 
-renderComponent(AppCmp);
+
+const injector = Injector.create({
+    providers: [{
+        provide: myInjectionToken,
+        useValue: 'root injector'
+    }]
+});
+
+
+renderComponent(AppCmp, { injector });
 
 @NgModule({
-    imports: [ CommonModule ],
-    declarations: [ ButtonCmp, AppCmp ]
+    imports: [CommonModule],
+    declarations: [ButtonCmp, AppCmp]
 })
 export class MainModule {
 }
